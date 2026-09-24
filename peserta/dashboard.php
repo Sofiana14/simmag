@@ -28,12 +28,24 @@ $data_peserta = $stmt->fetch();
 
 $peserta_id = $data_peserta['peserta_id'] ?? null;
 
-// 2. Ambil data Pembimbing dan Tim (Sesuai struktur database Anda)
+// Variabel default statistik
+$total_presensi = 0;
+$total_logbook_acc = 0;
 $data_penempatan = null;
 $data_tim = [];
 
 if ($peserta_id) {
-    // Info Pembimbing (Langsung ambil dari kolom nama_pembimbing di tabel penempatan)
+    // 2. Hitung Total Presensi
+    $stmt_presensi = $pdo->prepare("SELECT COUNT(*) FROM presensi WHERE peserta_id = ?");
+    $stmt_presensi->execute([$peserta_id]);
+    $total_presensi = $stmt_presensi->fetchColumn();
+
+    // 3. Hitung Total Logbook ACC (Disetujui)
+    $stmt_logbook = $pdo->prepare("SELECT COUNT(*) FROM logbook WHERE peserta_id = ? AND status = 'disetujui'");
+    $stmt_logbook->execute([$peserta_id]);
+    $total_logbook_acc = $stmt_logbook->fetchColumn();
+
+    // 4. Info Pembimbing
     $stmt_pem = $pdo->prepare("
         SELECT nama_pembimbing
         FROM penempatan 
@@ -42,7 +54,7 @@ if ($peserta_id) {
     $stmt_pem->execute([$peserta_id]);
     $data_penempatan = $stmt_pem->fetch();
 
-    // Info Anggota Tim (Cari peserta lain yang memiliki nama_pembimbing yang sama)
+    // 5. Info Anggota Tim
     if ($data_penempatan && !empty($data_penempatan['nama_pembimbing'])) {
         $stmt_tim = $pdo->prepare("
             SELECT p.nama, p.institusi 
@@ -100,9 +112,9 @@ if ($peserta_id) {
             <h1 class="text-xl font-semibold text-gray-800">Dashboard</h1>
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                    <?= substr($_SESSION['name'], 0, 1) ?>
+                    <?= substr($_SESSION['name'] ?? 'P', 0, 1) ?>
                 </div>
-                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($_SESSION['name']) ?></span>
+                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($_SESSION['name'] ?? 'Peserta') ?></span>
             </div>
         </header>
 
@@ -116,7 +128,7 @@ if ($peserta_id) {
                         <h2 class="text-lg font-bold text-red-800 mb-1">Pendaftaran Anda Ditolak</h2>
                         <p class="text-sm text-red-700 mb-3">Mohon maaf, pengajuan magang Anda tidak dapat diproses lebih lanjut karena alasan berikut:</p>
                         <div class="bg-white p-4 rounded-lg border border-red-100 text-gray-700 text-sm italic font-medium">
-                            "<?= nl2br(htmlspecialchars($data_peserta['alasan_penolakan'])) ?>"
+                            "<?= nl2br(htmlspecialchars($data_peserta['alasan_penolakan'] ?? '')) ?>"
                         </div>
                     </div>
                 </div>
@@ -129,7 +141,7 @@ if ($peserta_id) {
                             <p class="text-sm text-green-700">Dokumen Surat Letter of Acceptance (LOA) resmi dari BPS telah diterbitkan.</p>
                         </div>
                     </div>
-                    <?php if ($data_peserta['loa_path']): ?>
+                    <?php if (!empty($data_peserta['loa_path'])): ?>
                         <a href="<?= htmlspecialchars($data_peserta['loa_path']) ?>" target="_blank" class="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-600/30 flex items-center justify-center gap-2 whitespace-nowrap">
                             <i data-lucide="download" class="w-5 h-5"></i> Download LOA
                         </a>
@@ -143,7 +155,7 @@ if ($peserta_id) {
                     <i data-lucide="graduation-cap" class="w-48 h-48 -mt-10 -mr-10"></i>
                 </div>
                 <div class="relative z-10">
-                    <h2 class="text-2xl font-bold mb-2">Selamat Datang, <?= htmlspecialchars($_SESSION['name']) ?>!</h2>
+                    <h2 class="text-2xl font-bold mb-2">Selamat Datang, <?= htmlspecialchars($_SESSION['name'] ?? 'Peserta') ?>!</h2>
                     <p class="text-slate-300">Pantau proses pendaftaran, presensi harian, dan pengisian logbook Anda di sini.</p>
                 </div>
             </div>
@@ -166,11 +178,11 @@ if ($peserta_id) {
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <h3 class="text-sm text-gray-500 mb-2">Total Presensi</h3>
-                    <p class="text-2xl font-bold text-blue-600">-- <span class="text-sm text-gray-400 font-normal">Hari</span></p>
+                    <p class="text-2xl font-bold text-blue-600"><?= $total_presensi ?> <span class="text-sm text-gray-400 font-normal">Hari</span></p>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <h3 class="text-sm text-gray-500 mb-2">Logbook ACC</h3>
-                    <p class="text-2xl font-bold text-green-600">-- <span class="text-sm text-gray-400 font-normal">Kegiatan</span></p>
+                    <p class="text-2xl font-bold text-green-600"><?= $total_logbook_acc ?> <span class="text-sm text-gray-400 font-normal">Kegiatan</span></p>
                 </div>
             </div>
 
