@@ -28,6 +28,9 @@ $data_peserta = $stmt->fetch();
 
 $peserta_id = $data_peserta['peserta_id'] ?? null;
 
+// Ambil nama peserta dari database jika session name kosong
+$nama_user = !empty($_SESSION['name']) ? $_SESSION['name'] : ($data_peserta['nama'] ?? 'Peserta');
+
 // Variabel default statistik
 $total_presensi = 0;
 $total_logbook_acc = 0;
@@ -112,9 +115,9 @@ if ($peserta_id) {
             <h1 class="text-xl font-semibold text-gray-800">Dashboard</h1>
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                    <?= substr($_SESSION['name'] ?? 'P', 0, 1) ?>
+                    <?= substr($nama_user, 0, 1) ?>
                 </div>
-                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($_SESSION['name'] ?? 'Peserta') ?></span>
+                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($nama_user) ?></span>
             </div>
         </header>
 
@@ -155,7 +158,7 @@ if ($peserta_id) {
                     <i data-lucide="graduation-cap" class="w-48 h-48 -mt-10 -mr-10"></i>
                 </div>
                 <div class="relative z-10">
-                    <h2 class="text-2xl font-bold mb-2">Selamat Datang, <?= htmlspecialchars($_SESSION['name'] ?? 'Peserta') ?>!</h2>
+                    <h2 class="text-2xl font-bold mb-2">Selamat Datang, <?= htmlspecialchars($nama_user) ?>!</h2>
                     <p class="text-slate-300">Pantau proses pendaftaran, presensi harian, dan pengisian logbook Anda di sini.</p>
                 </div>
             </div>

@@ -7,7 +7,7 @@ $success = '';
 $error = '';
 
 // 1. Ambil Data Profil Peserta
-$stmt = $pdo->prepare("SELECT id FROM peserta WHERE user_id = ?");
+$stmt = $pdo->prepare("SELECT id, nama FROM peserta WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $peserta = $stmt->fetch();
 
@@ -15,6 +15,9 @@ if (!$peserta) {
     die("Data profil belum lengkap. Silakan lengkapi profil terlebih dahulu.");
 }
 $peserta_id = $peserta['id'];
+
+// Penanganan fallback nama jika di session belum tersimpan
+$nama_user = $_SESSION['name'] ?? ($peserta['nama'] ?? 'Peserta');
 
 // 2. Proses Simpan / Update Form Logbook
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
@@ -51,14 +54,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             if (!in_array($mime_type, $allowed_mimes) || !in_array($ext, $allowed_exts)) {
                 $error = "Format foto tidak valid. Gunakan file JPG atau PNG.";
             } else {
-                $upload_dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'dokumentasi' . DIRECTORY_SEPARATOR;
+                $base_upload = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads';
+                $target_dir  = $base_upload . DIRECTORY_SEPARATOR . 'dokumentasi' . DIRECTORY_SEPARATOR;
                 
-                if (!file_exists($upload_dir)) {
-                    mkdir($upload_dir, 0777, true);
+                if (!is_dir($base_upload)) {
+                    @mkdir($base_upload, 0777, true);
+                }
+
+                if (!is_dir($target_dir)) {
+                    @mkdir($target_dir, 0777, true);
                 }
 
                 $filename = time() . "_" . preg_replace("/[^a-zA-Z0-9.]/", "_", basename($_FILES['dokumentasi']['name']));
-                $destination = $upload_dir . $filename;
+                $destination = $target_dir . $filename;
 
                 if (move_uploaded_file($tmp_name, $destination)) {
                     $dokumentasi_path = "../uploads/dokumentasi/" . $filename;
@@ -77,7 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                     $stmt = $pdo->prepare("UPDATE logbook SET tanggal=?, judul_kegiatan=?, deskripsi=?, hasil=?, kendala=?, solusi=?, dokumentasi=?, status='menunggu', catatan_pembimbing=NULL WHERE id=? AND peserta_id=?");
                     $stmt->execute([$tanggal, $judul_kegiatan, $deskripsi, $hasil, $kendala, $solusi, $dokumentasi_path, $logbook_id, $peserta_id]);
                 } else {
-                    // Update tanpa mengganti foto lama
                     $stmt = $pdo->prepare("UPDATE logbook SET tanggal=?, judul_kegiatan=?, deskripsi=?, hasil=?, kendala=?, solusi=?, status='menunggu', catatan_pembimbing=NULL WHERE id=? AND peserta_id=?");
                     $stmt->execute([$tanggal, $judul_kegiatan, $deskripsi, $hasil, $kendala, $solusi, $logbook_id, $peserta_id]);
                 }
@@ -142,9 +149,9 @@ $riwayat_logbook = $stmt->fetchAll();
             <h1 class="text-xl font-semibold text-gray-800">Catatan Logbook Harian</h1>
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                    <?= substr($_SESSION['name'], 0, 1) ?>
+                    <?= substr($nama_user, 0, 1) ?>
                 </div>
-                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($_SESSION['name']) ?></span>
+                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($nama_user) ?></span>
             </div>
         </header>
 
