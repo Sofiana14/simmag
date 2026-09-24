@@ -28,25 +28,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
     // Proses Upload File Dokumentasi
     $dokumentasi_path = '';
-    if (isset($_FILES['dokumentasi']) && $_FILES['dokumentasi']['error'] == 0) {
-        
-        // PERBAIKAN: Path Absolute (Fisik) & Relative (Database)
-        $upload_dir = __DIR__ . "/../uploads/dokumentasi/";
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-        
-        $db_dir = "../uploads/dokumentasi/";
-        
-        $allowed_types = ['image/jpeg', 'image/png', 'image/jpg'];
-        if (in_array($_FILES['dokumentasi']['type'], $allowed_types)) {
-            $filename = time() . "_" . preg_replace("/[^a-zA-Z0-9.]/", "_", basename($_FILES['dokumentasi']['name']));
-            
-            // Pindahkan file ke folder absolut
-            if (move_uploaded_file($_FILES['dokumentasi']['tmp_name'], $upload_dir . $filename)) {
-                // Catat di database pakai relative path
-                $dokumentasi_path = $db_dir . $filename;
-            }
+    
+    if (isset($_FILES['dokumentasi']) && $_FILES['dokumentasi']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $file_error = $_FILES['dokumentasi']['error'];
+        $file_size  = $_FILES['dokumentasi']['size'];
+        $tmp_name   = $_FILES['dokumentasi']['tmp_name'];
+
+        if ($file_error === UPLOAD_ERR_INI_SIZE || $file_error === UPLOAD_ERR_FORM_SIZE || $file_size > 2 * 1024 * 1024) {
+            $error = "Ukuran file terlalu besar. Maksimal 2MB.";
+        } elseif ($file_error !== UPLOAD_ERR_OK) {
+            $error = "Terjadi kesalahan saat mengunggah file (Kode Error: $file_error).";
         } else {
-            $error = "Format foto tidak valid. Gunakan JPG/PNG.";
+            $ext = strtolower(pathinfo($_FILES['dokumentasi']['name'], PATHINFO_EXTENSION));
+            $allowed_exts  = ['jpg', 'jpeg', 'png'];
+
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime_type = finfo_file($finfo, $tmp_name);
+            finfo_close($finfo);
+
+            $allowed_mimes = ['image/jpeg', 'image/png', 'image/jpg'];
+
+            if (!in_array($mime_type, $allowed_mimes) || !in_array($ext, $allowed_exts)) {
+                $error = "Format foto tidak valid. Gunakan file JPG atau PNG.";
+            } else {
+                $upload_dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'dokumentasi' . DIRECTORY_SEPARATOR;
+                
+                if (!file_exists($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+
+                $filename = time() . "_" . preg_replace("/[^a-zA-Z0-9.]/", "_", basename($_FILES['dokumentasi']['name']));
+                $destination = $upload_dir . $filename;
+
+                if (move_uploaded_file($tmp_name, $destination)) {
+                    $dokumentasi_path = "../uploads/dokumentasi/" . $filename;
+                } else {
+                    $error = "Gagal memindahkan file ke server. Periksa hak akses folder penyimpanan.";
+                }
+            }
         }
     }
 
@@ -65,7 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 $success = "Logbook berhasil diperbaiki dan dikirim ulang untuk direview.";
             } else {
                 // INSERT BARU
-                // Validasi foto wajib untuk input baru
                 if (!$dokumentasi_path) {
                     throw new Exception("Foto dokumentasi wajib diunggah.");
                 }
@@ -233,7 +251,7 @@ $riwayat_logbook = $stmt->fetchAll();
                                         
                                         <p class="text-sm text-gray-700 mb-4"><?= nl2br(htmlspecialchars($row['deskripsi'])) ?></p>
                                         
-                                        <!-- Jika ada catatan revisi dari pembimbing -->
+                                        <!-- Catatan revisi pembimbing -->
                                         <?php if ($row['status'] == 'revisi' && $row['catatan_pembimbing']): ?>
                                             <div class="bg-white border border-red-200 p-3 rounded-lg mb-4 flex gap-3 shadow-sm">
                                                 <i data-lucide="message-square-warning" class="w-5 h-5 text-red-500 shrink-0"></i>
@@ -245,12 +263,10 @@ $riwayat_logbook = $stmt->fetchAll();
                                         <?php endif; ?>
                                         
                                         <div class="flex items-center gap-3 pt-3 border-t border-gray-100">
-                                            <!-- Tombol Lihat Foto -->
                                             <a href="<?= htmlspecialchars($row['dokumentasi']) ?>" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg">
                                                 <i data-lucide="image" class="w-4 h-4"></i> Lihat Foto
                                             </a>
                                             
-                                            <!-- Tombol Perbaiki (Hanya muncul jika status Revisi) -->
                                             <?php if ($row['status'] == 'revisi'): ?>
                                                 <button type="button" 
                                                     onclick="editLogbook(<?= htmlspecialchars(json_encode([
