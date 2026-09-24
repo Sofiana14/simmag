@@ -1,10 +1,20 @@
 <?php
 require_once '../config/database.php';
+
+// Pastikan fungsi checkRole sudah ada
+if (!function_exists('checkRole')) {
+    function checkRole($role) {
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== $role) {
+            header("Location: ../login.php");
+            exit;
+        }
+    }
+}
 checkRole('peserta');
 
 $user_id = $_SESSION['user_id'];
 
-// Ambil data progress peserta dari database (Termasuk LOA)
+// 1. Ambil data progress peserta (Pendaftaran & LOA)
 $stmt = $pdo->prepare("
     SELECT p.id as peserta_id, p.*, pkt.status as status_daftar, pkt.alasan_penolakan, 
            (SELECT file_path FROM loa WHERE peserta_id = p.id LIMIT 1) as loa_path
@@ -15,6 +25,36 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$user_id]);
 $data_peserta = $stmt->fetch();
+
+$peserta_id = $data_peserta['peserta_id'] ?? null;
+
+// 2. Ambil data Pembimbing dan Tim (Sesuai struktur database Anda)
+$data_penempatan = null;
+$data_tim = [];
+
+if ($peserta_id) {
+    // Info Pembimbing (Langsung ambil dari kolom nama_pembimbing di tabel penempatan)
+    $stmt_pem = $pdo->prepare("
+        SELECT nama_pembimbing
+        FROM penempatan 
+        WHERE peserta_id = ?
+    ");
+    $stmt_pem->execute([$peserta_id]);
+    $data_penempatan = $stmt_pem->fetch();
+
+    // Info Anggota Tim (Cari peserta lain yang memiliki nama_pembimbing yang sama)
+    if ($data_penempatan && !empty($data_penempatan['nama_pembimbing'])) {
+        $stmt_tim = $pdo->prepare("
+            SELECT p.nama, p.institusi 
+            FROM penempatan pen 
+            JOIN peserta p ON pen.peserta_id = p.id 
+            WHERE pen.nama_pembimbing = ? 
+            AND pen.peserta_id != ?
+        ");
+        $stmt_tim->execute([$data_penempatan['nama_pembimbing'], $peserta_id]);
+        $data_tim = $stmt_tim->fetchAll();
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -66,9 +106,9 @@ $data_peserta = $stmt->fetch();
             </div>
         </header>
 
-        <div class="p-8">
+        <div class="p-8 max-w-7xl mx-auto">
             
-            <!-- NOTIFIKASI STATUS PENDAFTARAN (Ditolak / Diterima + LOA) -->
+            <!-- NOTIFIKASI STATUS PENDAFTARAN -->
             <?php if (isset($data_peserta['status_daftar']) && $data_peserta['status_daftar'] == 'ditolak'): ?>
                 <div class="bg-red-50 border border-red-200 p-6 rounded-xl mb-8 flex items-start gap-4 shadow-sm">
                     <i data-lucide="alert-triangle" class="w-8 h-8 text-red-500 shrink-0"></i>
@@ -133,6 +173,72 @@ $data_peserta = $stmt->fetch();
                     <p class="text-2xl font-bold text-green-600">-- <span class="text-sm text-gray-400 font-normal">Kegiatan</span></p>
                 </div>
             </div>
+
+            <!-- KARTU INFORMASI PEMBIMBING & TIM -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                
+                <!-- Info Pembimbing -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full flex flex-col">
+                    <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
+                        <i data-lucide="user-check" class="w-5 h-5 text-blue-600"></i> Informasi Pembimbing
+                    </h3>
+                    
+                    <div class="flex-1 flex flex-col justify-center">
+                        <?php if ($data_penempatan && !empty($data_penempatan['nama_pembimbing'])): ?>
+                            <div class="flex items-center gap-5 bg-blue-50 border border-blue-100 p-5 rounded-xl">
+                                <div class="w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-2xl shadow-sm">
+                                    <?= substr($data_penempatan['nama_pembimbing'], 0, 1) ?>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900 text-lg"><?= htmlspecialchars($data_penempatan['nama_pembimbing']) ?></p>
+                                    <p class="text-sm text-gray-600">Pegawai / Pembimbing BPS</p>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="text-center py-6 text-gray-500">
+                                <i data-lucide="clock" class="w-12 h-12 mx-auto text-gray-300 mb-3"></i>
+                                <p class="font-medium text-gray-600">Belum Ada Pembimbing</p>
+                                <p class="text-sm mt-1">Admin belum menetapkan pembimbing lapangan untuk Anda.</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Info Tim -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full flex flex-col">
+                    <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-green-600"></i> Anggota Tim Anda
+                    </h3>
+                    
+                    <div class="flex-1 overflow-y-auto">
+                        <?php if (count($data_tim) > 0): ?>
+                            <ul class="space-y-3">
+                                <?php foreach ($data_tim as $tim): ?>
+                                    <li class="flex items-center gap-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-100">
+                                        <div class="w-10 h-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-sm shadow-inner">
+                                            <?= substr($tim['nama'], 0, 1) ?>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-gray-800 text-sm"><?= htmlspecialchars($tim['nama']) ?></p>
+                                            <p class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                                <i data-lucide="building-2" class="w-3 h-3"></i> <?= htmlspecialchars($tim['institusi']) ?>
+                                            </p>
+                                        </div>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php else: ?>
+                            <div class="text-center py-8 text-gray-500 flex flex-col justify-center h-full">
+                                <i data-lucide="user-minus" class="w-12 h-12 mx-auto text-gray-300 mb-3"></i>
+                                <p class="font-medium text-gray-600">Belum Ada Anggota Tim</p>
+                                <p class="text-sm mt-1">Anda belum digabungkan dengan peserta magang lain.</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </main>
 
