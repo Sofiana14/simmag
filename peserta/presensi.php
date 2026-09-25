@@ -12,7 +12,7 @@ $tanggal_hari_ini = date('Y-m-d');
 $waktu_sekarang = date('H:i');
 
 // 1. Ambil Data Profil Peserta
-$stmt = $pdo->prepare("SELECT id FROM peserta WHERE user_id = ?");
+$stmt = $pdo->prepare("SELECT id, nama FROM peserta WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $peserta = $stmt->fetch();
 
@@ -20,6 +20,9 @@ if (!$peserta) {
     die("Data profil belum lengkap. Silakan lengkapi profil terlebih dahulu.");
 }
 $peserta_id = $peserta['id'];
+
+// Penanganan nama user dari session atau tabel peserta
+$nama_user = !empty($_SESSION['name']) ? $_SESSION['name'] : ($peserta['nama'] ?? 'Peserta');
 
 // 2. Cek apakah hari ini sudah absen
 $stmt = $pdo->prepare("SELECT status FROM presensi WHERE peserta_id = ? AND tanggal = ?");
@@ -128,9 +131,9 @@ $riwayat_presensi = $stmt->fetchAll();
             <h1 class="text-xl font-semibold text-gray-800">Presensi Harian</h1>
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                    <?= substr($_SESSION['name'], 0, 1) ?>
+                    <?= substr($nama_user, 0, 1) ?>
                 </div>
-                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($_SESSION['name']) ?></span>
+                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($nama_user) ?></span>
             </div>
         </header>
 
