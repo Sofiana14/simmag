@@ -76,18 +76,26 @@ if ($peserta_id) {
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Peserta - SIMMAG BPS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-gray-50 flex h-screen overflow-hidden">
 
-    <!-- Sidebar -->
-    <aside class="w-64 bg-slate-800 text-white flex flex-col hidden md:flex">
-        <div class="p-6 text-xl font-bold border-b border-slate-700 flex items-center gap-2">
-            <i data-lucide="bar-chart-2" class="text-blue-400"></i> SIMMAG BPS
+    <!-- Latar Belakang Gelap / Backdrop Overlay saat Menu Terbuka di Layar Kecil -->
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden md:hidden transition-opacity"></div>
+
+    <!-- Sidebar (Statis di Desktop, Drawer Responsif di Mobile) -->
+    <aside id="sidebar-menu" class="w-64 bg-slate-800 text-white flex flex-col fixed inset-y-0 left-0 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex">
+        <div class="h-[73px] px-4 flex items-center justify-between border-b border-slate-700/50 md:border-none">
+            <img src="../src/assets/img/logo.png" alt="Logo" class="h-14 max-w-[200px] w-auto object-contain brightness-0 invert">
+            <!-- Tombol Silang Menutup Menu di Layar Kecil -->
+            <button type="button" onclick="toggleSidebar()" class="p-2 text-slate-400 hover:text-white md:hidden rounded-lg">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
         </div>
-        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav class="flex-1 px-4 pt-6 pb-4 space-y-2 overflow-y-auto">
             <a href="dashboard.php" class="flex items-center gap-3 p-3 rounded-lg bg-blue-600 text-white transition">
                 <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
             </a>
@@ -109,19 +117,26 @@ if ($peserta_id) {
         </nav>
     </aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto relative">
-        <header class="bg-white border-b border-gray-200 p-4 px-8 flex justify-between items-center sticky top-0 z-10">
-            <h1 class="text-xl font-semibold text-gray-800">Dashboard</h1>
+    <!-- Konten Utama -->
+    <main class="flex-1 overflow-y-auto relative w-full">
+        <header class="bg-white border-b border-gray-200 p-4 px-4 md:px-8 flex justify-between items-center sticky top-0 z-30">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                    <?= substr($nama_user, 0, 1) ?>
+                <!-- Tombol Garis Tiga (Menu) saat Ukuran Layar Mengecil -->
+                <button type="button" onclick="toggleSidebar()" class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:hidden border border-gray-200 focus:outline-none transition">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <h1 class="text-xl font-semibold text-gray-800">Dashboard</h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200 shadow-sm">
+                    <i data-lucide="user" class="w-5 h-5"></i>
                 </div>
-                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($nama_user) ?></span>
+                <span class="text-sm font-medium text-gray-700 hidden sm:inline"><?= htmlspecialchars($nama_user) ?></span>
             </div>
         </header>
 
-        <div class="p-8 max-w-7xl mx-auto">
+        <div class="p-4 md:p-8 max-w-7xl mx-auto">
             
             <!-- NOTIFIKASI STATUS PENDAFTARAN -->
             <?php if (isset($data_peserta['status_daftar']) && $data_peserta['status_daftar'] == 'ditolak'): ?>
@@ -153,7 +168,7 @@ if ($peserta_id) {
             <?php endif; ?>
 
             <!-- Welcome Card -->
-            <div class="bg-slate-800 rounded-xl shadow-sm text-white p-8 mb-8 flex justify-between items-center relative overflow-hidden">
+            <div class="bg-slate-800 rounded-xl shadow-sm text-white p-6 md:p-8 mb-8 flex justify-between items-center relative overflow-hidden">
                 <div class="absolute right-0 top-0 opacity-10">
                     <i data-lucide="graduation-cap" class="w-48 h-48 -mt-10 -mr-10"></i>
                 </div>
@@ -164,7 +179,7 @@ if ($peserta_id) {
             </div>
 
             <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <h3 class="text-sm text-gray-500 mb-2">Status Pendaftaran</h3>
                     <?php
@@ -257,6 +272,16 @@ if ($peserta_id) {
         </div>
     </main>
 
-    <script> lucide.createIcons(); </script>
+    <script> 
+        lucide.createIcons(); 
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar-menu');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+    </script>
 </body>
 </html>
