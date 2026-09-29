@@ -1,5 +1,5 @@
 <?php
-// Cukup panggil database.php (karena session_start sudah ada di dalamnya)
+// Memanggil koneksi database (di dalamnya sudah ada session_start)
 require_once '../config/database.php';
 
 // Fungsi Pengecekan Role yang aman (kebal huruf besar/kecil)
@@ -22,16 +22,18 @@ $peserta_bimbingan = [];
 $total_peserta = 0;
 
 try {
-    // Ambil daftar peserta bimbingan berdasarkan nama pembimbing
+    // PERBAIKAN FINAL: Menggunakan LOWER() dan TRIM() agar pencocokan nama
+    // mengabaikan spasi berlebih dan perbedaan huruf besar/kecil.
     $stmt = $pdo->prepare("
         SELECT pn.*, pst.nama as nama_peserta, pst.nim, pst.institusi, p.periode 
         FROM penempatan pn
         JOIN peserta pst ON pn.peserta_id = pst.id
         JOIN pendaftaran p ON pst.id = p.peserta_id
-        WHERE pn.nama_pembimbing LIKE ?
+        WHERE LOWER(TRIM(pn.nama_pembimbing)) = LOWER(TRIM(?))
         ORDER BY pst.nama ASC
     ");
-    $stmt->execute(["%$nama_pembimbing_login%"]);
+    
+    $stmt->execute([$nama_pembimbing_login]);
     $peserta_bimbingan = $stmt->fetchAll();
 
     $total_peserta = count($peserta_bimbingan);
