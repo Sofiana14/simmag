@@ -49,7 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['email'] = $user['email'];
                 $_SESSION['role'] = $role;
-                $_SESSION['name'] = $user['nama'];
+                
+                // PERBAIKAN: Mengubah $user['nama'] menjadi $user['name'] sesuai database
+                $_SESSION['name'] = $user['name'];
 
                 if ($role == 'admin') {
                     header("Location: admin/dashboard.php");

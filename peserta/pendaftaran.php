@@ -4,7 +4,7 @@ require_once '../config/database.php';
 // Pastikan fungsi checkRole sudah ada di database.php atau file auth lainnya
 if (!function_exists('checkRole')) {
     function checkRole($role) {
-        if (!isset($_SESSION['role']) || $_SESSION['role'] !== $role) {
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !==$role) {
             header("Location: ../login.php");
             exit;
         }
@@ -12,10 +12,8 @@ if (!function_exists('checkRole')) {
 }
 checkRole('peserta');
 
-$user_id = $_SESSION['user_id'];
-$error = '';
-$success = '';
-$cek_daftar = false;
+$user_id = $_SESSION['user_id'];$error = '';
+$success = '';$cek_daftar = false;
 
 // =================================================================================================
 // 1. CEK PROFIL PESERTA & PROSES LENGKAPI PROFIL
@@ -24,56 +22,48 @@ $cek_daftar = false;
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_profil'])) {
     $nim = trim($_POST['nim_baru']);
     $no_hp = trim($_POST['no_hp_baru']);
-    $nama_lengkap = $_SESSION['name']; 
+    $nama_lengkap =$_SESSION['name']; 
 
     try {
-        $stmt_insert = $pdo->prepare("INSERT INTO peserta (user_id, nama, nim, no_hp) VALUES (?, ?, ?, ?)");
-        $stmt_insert->execute([$user_id, $nama_lengkap, $nim, $no_hp]);
-        $success = "Profil berhasil dilengkapi! Silakan lanjutkan pendaftaran magang di bawah ini.";
-    } catch (Exception $e) {
-        $error = "Gagal menyimpan profil: " . $e->getMessage();
+        $stmt_insert =$pdo->prepare("INSERT INTO peserta (user_id, nama, nim, no_hp) VALUES (?, ?, ?, ?)");
+        $stmt_insert->execute([$user_id, $nama_lengkap,$nim, $no_hp]);$success = "Profil berhasil dilengkapi! Silakan lanjutkan pendaftaran magang di bawah ini.";
+    } catch (Exception $e) {$error = "Gagal menyimpan profil: " . $e->getMessage();
     }
 }
 
-$stmt = $pdo->prepare("SELECT * FROM peserta WHERE user_id = ?");
+$stmt =$pdo->prepare("SELECT * FROM peserta WHERE user_id = ?");
 $stmt->execute([$user_id]);
-$peserta = $stmt->fetch();
+$peserta =$stmt->fetch();
 
 
 // =================================================================================================
 // 2. PROSES PENDAFTARAN MAGANG
 // =================================================================================================
 if ($peserta) {
-    $peserta_id = $peserta['id'];
+    $peserta_id =$peserta['id'];
 
-    $stmt = $pdo->prepare("SELECT * FROM pendaftaran WHERE peserta_id = ? AND status IN ('menunggu', 'diterima') ORDER BY id DESC LIMIT 1");
+    $stmt =$pdo->prepare("SELECT * FROM pendaftaran WHERE peserta_id = ? AND status IN ('menunggu', 'diterima') ORDER BY id DESC LIMIT 1");
     $stmt->execute([$peserta_id]);
-    $cek_daftar = $stmt->fetch();
+    $cek_daftar =$stmt->fetch();
 
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_pendaftaran']) && !$cek_daftar) {
-        $institusi = trim($_POST['institusi']);
-        $fakultas = trim($_POST['fakultas']);
-        $prodi = trim($_POST['prodi']);
-        $tanggal_mulai = $_POST['tanggal_mulai'];
-        $tanggal_selesai = $_POST['tanggal_selesai'];
         
-        $bulan_array = ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April','05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus','09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'];
+        // Menangkap isian NIM dari Langkah 1
+        $nim_edit = trim($_POST['nim_edit']);$institusi = trim($_POST['institusi']);$fakultas = trim($_POST['fakultas']);$prodi = trim($_POST['prodi']);$tanggal_mulai = $_POST['tanggal_mulai'];$tanggal_selesai = $_POST['tanggal_selesai'];$bulan_array = ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April','05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus','09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'];
         $bulan = date('m', strtotime($tanggal_mulai));
         $tahun = date('Y', strtotime($tanggal_mulai));
-        $periode = $bulan_array[$bulan] . " " . $tahun;
+        $periode =$bulan_array[$bulan] . " " . $tahun;
 
-        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM pendaftaran WHERE periode = ? AND status != 'ditolak'");
+        $stmt =$pdo->prepare("SELECT COUNT(*) as total FROM pendaftaran WHERE periode = ? AND status != 'ditolak'");
         $stmt->execute([$periode]);
-        $kuota = $stmt->fetch();
+        $kuota =$stmt->fetch();
 
-        if ($kuota['total'] >= 6) {
-            $error = "Pendaftaran gagal: Kuota magang untuk periode $periode sudah penuh (Maksimal 6 peserta). Silakan pilih periode lain.";
+        if ($kuota['total'] >= 6) {$error = "Pendaftaran gagal: Kuota magang untuk periode $periode sudah penuh (Maksimal 6 peserta). Silakan pilih periode lain.";
         } else {
             
             // PERBAIKAN AUTO-FIX DIRECTORY:
             // 1. Definisikan path target
-            $upload_base = __DIR__ . '/../uploads';
-            $upload_dokumen = __DIR__ . '/../uploads/dokumen';
+            $upload_base = __DIR__ . '/../uploads';$upload_dokumen = __DIR__ . '/../uploads/dokumen';
 
             // 2. Hancurkan penghalang jika 'uploads' itu adalah file biasa (bukan folder)
             if (file_exists($upload_base) && !is_dir($upload_base)) {
@@ -94,47 +84,41 @@ if ($peserta) {
             }
 
             // Path final yang sudah dijamin 100% adalah folder asli
-            $target_dir = $upload_dokumen . '/';
-            $db_dir = "../uploads/dokumen/";
+            $target_dir = $upload_dokumen . '/';$db_dir = "../uploads/dokumen/";
 
-            $cv_file = $_FILES['cv'];
-            $surat_file = $_FILES['surat_pengantar'];
-            $allowed_types = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            $cv_file = $_FILES['cv'];$surat_file = $_FILES['surat_pengantar'];$allowed_types = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
-            if ($cv_file['error'] !== UPLOAD_ERR_OK || $surat_file['error'] !== UPLOAD_ERR_OK) {
-                $error = "Gagal membaca file! Pastikan ukuran file PDF Anda tidak melebihi batas maksimal.";
-            } elseif (!in_array($cv_file['type'], $allowed_types) || !in_array($surat_file['type'], $allowed_types)) {
-                $error = "Format file tidak diizinkan. Harap gunakan format PDF atau DOC/DOCX.";
+            if ($cv_file['error'] !== UPLOAD_ERR_OK || $surat_file['error'] !== UPLOAD_ERR_OK) {$error = "Gagal membaca file! Pastikan ukuran file PDF Anda tidak melebihi batas maksimal.";
+            } elseif (!in_array($cv_file['type'], $allowed_types) || !in_array($surat_file['type'], $allowed_types)) {$error = "Format file tidak diizinkan. Harap gunakan format PDF atau DOC/DOCX.";
             } else {
                 $cv_filename = time() . "_CV_" . preg_replace("/[^a-zA-Z0-9.]/", "_", basename($cv_file['name']));
                 $surat_filename = time() . "_Surat_" . preg_replace("/[^a-zA-Z0-9.]/", "_", basename($surat_file['name']));
 
                 // PROSES UPLOAD FILE
-                if (move_uploaded_file($cv_file['tmp_name'], $target_dir . $cv_filename) && move_uploaded_file($surat_file['tmp_name'], $target_dir . $surat_filename)) {
+                if (move_uploaded_file($cv_file['tmp_name'],$target_dir . $cv_filename) && move_uploaded_file($surat_file['tmp_name'], $target_dir .$surat_filename)) {
                     try {
                         $pdo->beginTransaction();
 
                         $no_pendaftaran = "MAG-" . date('Ymd') . "-" . rand(1000, 9999);
 
-                        $stmt = $pdo->prepare("INSERT INTO pendaftaran (peserta_id, nomor_pendaftaran, tanggal_daftar, tanggal_mulai, tanggal_selesai, periode, status) VALUES (?, ?, CURDATE(), ?, ?, ?, 'menunggu')");
-                        $stmt->execute([$peserta_id, $no_pendaftaran, $tanggal_mulai, $tanggal_selesai, $periode]);
-                        $pendaftaran_id = $pdo->lastInsertId();
+                        $stmt =$pdo->prepare("INSERT INTO pendaftaran (peserta_id, nomor_pendaftaran, tanggal_daftar, tanggal_mulai, tanggal_selesai, periode, status) VALUES (?, ?, CURDATE(), ?, ?, ?, 'menunggu')");
+                        $stmt->execute([$peserta_id, $no_pendaftaran,$tanggal_mulai, $tanggal_selesai,$periode]);
+                        $pendaftaran_id =$pdo->lastInsertId();
 
-                        $stmt = $pdo->prepare("INSERT INTO dokumen (peserta_id, pendaftaran_id, jenis_dokumen, nama_file, file_path) VALUES (?, ?, 'CV', ?, ?)");
-                        $stmt->execute([$peserta_id, $pendaftaran_id, $cv_file['name'], $db_dir . $cv_filename]);
+                        $stmt =$pdo->prepare("INSERT INTO dokumen (peserta_id, pendaftaran_id, jenis_dokumen, nama_file, file_path) VALUES (?, ?, 'CV', ?, ?)");
+                        $stmt->execute([$peserta_id, $pendaftaran_id,$cv_file['name'], $db_dir .$cv_filename]);
 
-                        $stmt = $pdo->prepare("INSERT INTO dokumen (peserta_id, pendaftaran_id, jenis_dokumen, nama_file, file_path) VALUES (?, ?, 'SURAT_PENGANTAR', ?, ?)");
-                        $stmt->execute([$peserta_id, $pendaftaran_id, $surat_file['name'], $db_dir . $surat_filename]);
+                        $stmt =$pdo->prepare("INSERT INTO dokumen (peserta_id, pendaftaran_id, jenis_dokumen, nama_file, file_path) VALUES (?, ?, 'SURAT_PENGANTAR', ?, ?)");
+                        $stmt->execute([$peserta_id, $pendaftaran_id,$surat_file['name'], $db_dir .$surat_filename]);
 
-                        $stmt = $pdo->prepare("UPDATE peserta SET institusi = ?, fakultas = ?, prodi = ? WHERE id = ?");
-                        $stmt->execute([$institusi, $fakultas, $prodi, $peserta_id]);
+                        // Menyimpan pembaharuan NIM beserta data instansi
+                        $stmt =$pdo->prepare("UPDATE peserta SET nim = ?, institusi = ?, fakultas = ?, prodi = ? WHERE id = ?");
+                        $stmt->execute([$nim_edit, $institusi,$fakultas, $prodi,$peserta_id]);
 
-                        $pdo->commit();
-                        $success = "Pendaftaran berhasil dikirim! Menunggu verifikasi admin.";
+                        $pdo->commit();$success = "Pendaftaran berhasil dikirim! Menunggu verifikasi admin.";
                         $cek_daftar = true; 
                     } catch (Exception $e) {
-                        $pdo->rollBack();
-                        $error = "Terjadi kesalahan sistem database: " . $e->getMessage();
+                        $pdo->rollBack();$error = "Terjadi kesalahan sistem database: " . $e->getMessage();
                     }
                 } else {
                     $error = "Sistem gagal memindahkan dokumen. Server memblokir akses ke folder tujuan.";
@@ -283,16 +267,19 @@ if ($peserta) {
                                 <label class="block text-sm text-gray-600 mb-1">Nama Lengkap</label>
                                 <input type="text" value="<?= htmlspecialchars($peserta['nama'] ?? '') ?>" class="w-full border bg-gray-50 p-2 rounded-lg" readonly>
                             </div>
+                            
+                            <!-- BAGIAN NIM YANG BISA DIEDIT -->
                             <div>
-                                <label class="block text-sm text-gray-600 mb-1">NIM / NIS</label>
-                                <input type="text" value="<?= htmlspecialchars($peserta['nim'] ?? '') ?>" class="w-full border bg-gray-50 p-2 rounded-lg" readonly>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">NIM / NIS <span class="text-red-500">*</span></label>
+                                <input type="text" name="nim_edit" value="<?= htmlspecialchars($peserta['nim'] ?? '') ?>" required class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                             </div>
+                            
                             <div class="col-span-2">
                                 <label class="block text-sm text-gray-600 mb-1">Nomor HP / WhatsApp</label>
                                 <input type="text" value="<?= htmlspecialchars($peserta['no_hp'] ?? '') ?>" class="w-full border bg-gray-50 p-2 rounded-lg" readonly>
                             </div>
                         </div>
-                        <p class="text-xs text-red-500 mt-2">*Data biodata ditarik dari profil Anda.</p>
+                        <p class="text-xs text-blue-600 mt-2">*Anda dapat memperbaiki Nomor Induk (NIM/NIS) jika terdapat kesalahan ketik.</p>
                         
                         <div class="mt-6 flex justify-end">
                             <button type="button" onclick="nextStep(2)" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Selanjutnya</button>

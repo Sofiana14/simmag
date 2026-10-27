@@ -5,10 +5,11 @@ checkRole('admin');
 $success = '';
 $error = '';
 
-// 1. Proses Form Penempatan (Input Teks Bebas)
+// 1. Proses Form Penempatan
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'simpan_penempatan') {
     $peserta_id = $_POST['peserta_id'];
     $nama_tim = trim($_POST['nama_tim']);
+    // Mengambil nama pembimbing dari dropdown
     $nama_pembimbing = trim($_POST['nama_pembimbing']);
 
     try {
@@ -17,12 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $exists = $stmt->fetch();
 
         if ($exists) {
-            // Update penempatan
             $stmt = $pdo->prepare("UPDATE penempatan SET nama_tim = ?, nama_pembimbing = ?, tanggal_penempatan = CURDATE() WHERE peserta_id = ?");
             $stmt->execute([$nama_tim, $nama_pembimbing, $peserta_id]);
             $success = "Data penempatan berhasil diperbarui!";
         } else {
-            // Insert baru
             $stmt = $pdo->prepare("INSERT INTO penempatan (peserta_id, nama_tim, nama_pembimbing, tanggal_penempatan) VALUES (?, ?, ?, CURDATE())");
             $stmt->execute([$peserta_id, $nama_tim, $nama_pembimbing]);
             $success = "Peserta berhasil ditempatkan!";
@@ -43,6 +42,16 @@ $stmt = $pdo->query("
     ORDER BY pn.id ASC, p.tanggal_daftar DESC
 ");
 $peserta_diterima = $stmt->fetchAll();
+
+// 3. Ambil Daftar Pembimbing dan Hitung Kuota Bebannya
+$stmt_pem = $pdo->query("
+    SELECT name, 
+           (SELECT COUNT(*) FROM penempatan WHERE penempatan.nama_pembimbing = users.name) as total_bimbingan
+    FROM users
+    WHERE role = 'pembimbing'
+    ORDER BY name ASC
+");
+$list_pembimbing = $stmt_pem->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -109,7 +118,7 @@ $peserta_diterima = $stmt->fetchAll();
                 <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                     <div>
                         <h2 class="text-lg font-bold text-gray-800">Peserta Diterima</h2>
-                        <p class="text-sm text-gray-500">Ketik nama tim kerja dan pembimbing secara manual untuk setiap peserta.</p>
+                        <p class="text-sm text-gray-500">Atur penempatan peserta ke pembimbing yang tersedia.</p>
                     </div>
                 </div>
                 
@@ -193,10 +202,21 @@ $peserta_diterima = $stmt->fetchAll();
                     <input type="text" name="nama_tim" id="m_nama_tim" required class="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm" placeholder="Contoh: Tim IPDS / Tim Neraca...">
                 </div>
 
-                <!-- Input Teks Nama Pembimbing -->
+                <!-- Dropdown Pembimbing (Menggantikan Input Teks Bebas) -->
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Pembimbing <span class="text-red-500">*</span></label>
-                    <input type="text" name="nama_pembimbing" id="m_nama_pembimbing" required class="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm" placeholder="Contoh: Budi Santoso, SST., M.Stat...">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Pembimbing (Maks 5) <span class="text-red-500">*</span></label>
+                    <select name="nama_pembimbing" id="m_nama_pembimbing" required class="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                        <option value="">-- Pilih Pembimbing --</option>
+                        <?php foreach ($list_pembimbing as $pem): ?>
+                            <?php 
+                                $jumlah = $pem['total_bimbingan'];
+                                $is_full = ($jumlah >= 5);
+                            ?>
+                            <option value="<?= htmlspecialchars($pem['name']) ?>" <?= $is_full ? 'disabled class="bg-red-50 text-red-500"' : '' ?>>
+                                <?= htmlspecialchars($pem['name']) ?> (<?= $jumlah ?>/5) <?= $is_full ? '- PENUH' : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -217,7 +237,6 @@ $peserta_diterima = $stmt->fetchAll();
             document.getElementById('m_nama').innerText = data.nama;
             document.getElementById('m_nim').innerText = data.nim;
             
-            // Set input teks manual
             document.getElementById('m_nama_tim').value = data.nama_tim || "";
             document.getElementById('m_nama_pembimbing').value = data.nama_pembimbing || "";
             

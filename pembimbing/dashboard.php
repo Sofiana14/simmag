@@ -1,5 +1,5 @@
 <?php
-// Cukup panggil database.php (karena session_start sudah ada di dalamnya)
+// Memanggil koneksi database (di dalamnya sudah ada session_start)
 require_once '../config/database.php';
 
 // Fungsi Pengecekan Role yang aman (kebal huruf besar/kecil)
@@ -20,21 +20,34 @@ $nama_pembimbing_login = $_SESSION['name'];
 
 $peserta_bimbingan = [];
 $total_peserta = 0;
+$hadir_hari_ini = 0;
 
 try {
-    // Ambil daftar peserta bimbingan berdasarkan nama pembimbing
+    // Menambahkan LEFT JOIN ke tabel presensi dengan kondisi tanggal hari ini (CURDATE)
+    // PERBAIKAN: Menghapus 'pr.waktu_masuk' dari SELECT agar tidak error
     $stmt = $pdo->prepare("
-        SELECT pn.*, pst.nama as nama_peserta, pst.nim, pst.institusi, p.periode 
+        SELECT pn.*, pst.id as peserta_id, pst.nama as nama_peserta, pst.nim, pst.institusi, p.periode,
+               pr.status as status_presensi
         FROM penempatan pn
         JOIN peserta pst ON pn.peserta_id = pst.id
         JOIN pendaftaran p ON pst.id = p.peserta_id
-        WHERE pn.nama_pembimbing LIKE ?
+        LEFT JOIN presensi pr ON pst.id = pr.peserta_id AND pr.tanggal = CURDATE()
+        WHERE LOWER(TRIM(pn.nama_pembimbing)) = LOWER(TRIM(?))
         ORDER BY pst.nama ASC
     ");
-    $stmt->execute(["%$nama_pembimbing_login%"]);
+    
+    $stmt->execute([$nama_pembimbing_login]);
     $peserta_bimbingan = $stmt->fetchAll();
 
     $total_peserta = count($peserta_bimbingan);
+    
+    // Menghitung jumlah peserta yang hadir/izin hari ini untuk statistik
+    foreach ($peserta_bimbingan as $p) {
+        if (!empty($p['status_presensi'])) {
+            $hadir_hari_ini++;
+        }
+    }
+    
 } catch (PDOException $e) {
     $error_database = "Terjadi kesalahan sistem: " . $e->getMessage();
 }
@@ -93,6 +106,10 @@ try {
                     <p class="text-sm text-gray-500 mb-1">Total Peserta Bimbingan</p>
                     <p class="text-3xl font-bold text-gray-800"><?= $total_peserta ?> <span class="text-sm font-normal text-gray-400">Orang</span></p>
                 </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
+                    <p class="text-sm text-gray-500 mb-1">Telah Presensi Hari Ini</p>
+                    <p class="text-3xl font-bold text-gray-800"><?= $hadir_hari_ini ?> <span class="text-sm font-normal text-gray-400">Orang</span></p>
+                </div>
             </div>
 
             <!-- TABEL DAFTAR PESERTA -->
@@ -110,8 +127,8 @@ try {
                                 <th class="p-4 font-medium">No</th>
                                 <th class="p-4 font-medium">Nama Peserta / NIM</th>
                                 <th class="p-4 font-medium">Institusi</th>
+                                <th class="p-4 font-medium text-center">Kehadiran Hari Ini</th>
                                 <th class="p-4 font-medium">Tim Kerja</th>
-                                <th class="p-4 font-medium">Periode</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -124,14 +141,38 @@ try {
                                             <p class="text-xs text-gray-500"><?= htmlspecialchars($row['nim']) ?></p>
                                         </td>
                                         <td class="p-4 text-gray-700"><?= htmlspecialchars($row['institusi']) ?></td>
+                                        
+                                        <!-- KOLOM PRESENSI -->
+                                        <td class="p-4 text-center">
+                                            <?php 
+                                            $status_presensi = strtolower($row['status_presensi'] ?? '');
+                                            if ($status_presensi == 'hadir'): 
+                                            ?>
+                                                <!-- PERBAIKAN: Menghapus blok if waktu_masuk yang menyebabkan error -->
+                                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                                    <i data-lucide="check-circle" class="w-3 h-3"></i> Hadir
+                                                </span>
+
+                                            <?php elseif ($status_presensi == 'izin' || $status_presensi == 'ijin'): ?>
+                                                <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                                    <i data-lucide="mail-warning" class="w-3 h-3"></i> Izin
+                                                </span>
+
+                                            <?php elseif ($status_presensi == 'sakit'): ?>
+                                                <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                                    <i data-lucide="thermometer" class="w-3 h-3"></i> Sakit
+                                                </span>
+
+                                            <?php else: ?>
+                                                <span class="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                                    <i data-lucide="clock" class="w-3 h-3"></i> Belum Presensi
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+
                                         <td class="p-4">
                                             <span class="bg-blue-50 text-blue-700 font-semibold px-2.5 py-1 rounded-md text-xs border border-blue-100">
                                                 <?= htmlspecialchars($row['nama_tim'] ?? 'Belum ada tim') ?>
-                                            </span>
-                                        </td>
-                                        <td class="p-4 text-gray-700">
-                                            <span class="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600">
-                                                <?= htmlspecialchars($row['periode']) ?>
                                             </span>
                                         </td>
                                     </tr>
