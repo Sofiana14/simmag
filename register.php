@@ -73,9 +73,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-slate-900 flex items-center justify-center min-h-screen py-12">
+<body class="bg-slate-900 flex items-center justify-center min-h-screen py-12 relative">
 
-    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg my-auto">
+    <!-- Tombol Kembali ke Beranda -->
+    <a href="index.php" class="absolute top-6 left-6 md:top-10 md:left-10 flex items-center gap-2 text-slate-300 hover:text-white transition-colors duration-200 z-50">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        <span class="font-medium text-sm">Kembali ke Beranda</span>
+    </a>
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg my-auto relative z-10">
         <div class="text-center mb-6">
             <div class="inline-flex p-3 bg-blue-50 text-blue-600 rounded-xl mb-3">
                 <i data-lucide="user-plus" class="w-8 h-8"></i>

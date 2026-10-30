@@ -6,8 +6,13 @@ $user_id = $_SESSION['user_id'];
 $success = '';
 $error = '';
 
-// 1. Ambil Data Profil Peserta
-$stmt = $pdo->prepare("SELECT id, nama FROM peserta WHERE user_id = ?");
+// 1. Ambil Data Profil Peserta & Info Penempatan (Diperbarui untuk PDF)
+$stmt = $pdo->prepare("
+    SELECT p.id, p.nama, p.institusi, pen.nama_pembimbing 
+    FROM peserta p 
+    LEFT JOIN penempatan pen ON p.id = pen.peserta_id
+    WHERE p.user_id = ?
+");
 $stmt->execute([$user_id]);
 $peserta = $stmt->fetch();
 
@@ -15,9 +20,9 @@ if (!$peserta) {
     die("Data profil belum lengkap. Silakan lengkapi profil terlebih dahulu.");
 }
 $peserta_id = $peserta['id'];
-
-// Penanganan fallback nama jika di session belum tersimpan
 $nama_user = $_SESSION['name'] ?? ($peserta['nama'] ?? 'Peserta');
+$institusi = htmlspecialchars($peserta['institusi'] ?? '-');
+$pembimbing = htmlspecialchars($peserta['nama_pembimbing'] ?? 'Belum Ditentukan');
 
 // 2. Proses Simpan / Update Form Logbook
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
@@ -109,6 +114,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 $stmt = $pdo->prepare("SELECT * FROM logbook WHERE peserta_id = ? ORDER BY tanggal DESC, id DESC");
 $stmt->execute([$peserta_id]);
 $riwayat_logbook = $stmt->fetchAll();
+
+// 4. Hitung Statistik Logbook untuk PDF
+$total_logbook = count($riwayat_logbook);
+$disetujui = 0;
+$menunggu = 0;
+$revisi = 0;
+
+foreach ($riwayat_logbook as $lb) {
+    if ($lb['status'] == 'disetujui') $disetujui++;
+    elseif ($lb['status'] == 'menunggu') $menunggu++;
+    elseif ($lb['status'] == 'revisi') $revisi++;
+}
 ?>
 
 <!DOCTYPE html>
@@ -118,12 +135,19 @@ $riwayat_logbook = $stmt->fetchAll();
     <title>Logbook Harian - SIMMAG BPS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Library untuk Generate PDF langsung unduh -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-gray-50 flex h-screen overflow-hidden">
 
-    <aside class="w-64 bg-slate-800 text-white flex flex-col hidden md:flex">
-        <div class="p-6 text-xl font-bold border-b border-slate-700 flex items-center gap-2">
-            <i data-lucide="bar-chart-2" class="text-blue-400"></i> SIMMAG BPS
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden md:hidden transition-opacity"></div>
+
+    <aside id="sidebar-menu" class="w-64 bg-slate-800 text-white flex flex-col fixed inset-y-0 left-0 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex">
+        <div class="h-[73px] px-4 flex items-center justify-between border-b border-slate-700/50 md:border-none">
+            <img src="../src/assets/img/logo.png" alt="Logo" class="h-14 max-w-[200px] w-auto object-contain brightness-0 invert">
+            <button type="button" onclick="toggleSidebar()" class="p-2 text-slate-400 hover:text-white md:hidden rounded-lg">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
         </div>
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
             <a href="dashboard.php" class="flex items-center gap-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition">
@@ -145,17 +169,20 @@ $riwayat_logbook = $stmt->fetchAll();
     </aside>
 
     <main class="flex-1 flex flex-col overflow-hidden relative">
-        <header class="bg-white border-b border-gray-200 p-4 px-8 flex justify-between items-center z-10">
+        <header class="bg-white border-b border-gray-200 p-4 px-8 flex justify-between items-center z-10 sticky top-0">
             <h1 class="text-xl font-semibold text-gray-800">Catatan Logbook Harian</h1>
             <div class="flex items-center gap-3">
+                <button type="button" onclick="toggleSidebar()" class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:hidden border border-gray-200 focus:outline-none transition">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
                 <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
                     <?= substr($nama_user, 0, 1) ?>
                 </div>
-                <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($nama_user) ?></span>
+                <span class="text-sm font-medium text-gray-700 hidden sm:inline"><?= htmlspecialchars($nama_user) ?></span>
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-8">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8">
             
             <?php if ($success): ?>
                 <div class="bg-green-50 text-green-700 p-4 rounded-lg mb-6 shadow-sm flex items-center gap-2 border-l-4 border-green-500">
@@ -231,8 +258,14 @@ $riwayat_logbook = $stmt->fetchAll();
                 <!-- KOLOM 2: RIWAYAT -->
                 <div class="lg:col-span-2">
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
-                        <div class="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                        <div class="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center flex-wrap gap-3">
                             <h2 class="text-lg font-bold text-gray-800">Riwayat Logbook</h2>
+                            
+                            <!-- TOMBOL UNDUH PDF LANGSUNG -->
+                            <button id="btn-pdf" onclick="generatePDF()" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm focus:ring-2 focus:ring-blue-300">
+                                <i data-lucide="printer" class="w-4 h-4"></i> 
+                                <span>Download Rekap Logbook</span>
+                            </button>
                         </div>
                         
                         <div class="overflow-y-auto flex-1 p-6 space-y-4">
@@ -248,11 +281,11 @@ $riwayat_logbook = $stmt->fetchAll();
                                             
                                             <!-- Badge Status -->
                                             <?php if ($row['status'] == 'menunggu'): ?>
-                                                <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200"><i data-lucide="clock" class="w-3 h-3 inline mr-1"></i> Menunggu Review</span>
+                                                <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200 whitespace-nowrap"><i data-lucide="clock" class="w-3 h-3 inline mr-1"></i> Menunggu Review</span>
                                             <?php elseif ($row['status'] == 'disetujui'): ?>
-                                                <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"><i data-lucide="check-circle-2" class="w-3 h-3 inline mr-1"></i> Disetujui</span>
+                                                <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200 whitespace-nowrap"><i data-lucide="check-circle-2" class="w-3 h-3 inline mr-1"></i> Disetujui</span>
                                             <?php else: ?>
-                                                <span class="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200"><i data-lucide="alert-triangle" class="w-3 h-3 inline mr-1"></i> Perlu Revisi</span>
+                                                <span class="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200 whitespace-nowrap"><i data-lucide="alert-triangle" class="w-3 h-3 inline mr-1"></i> Perlu Revisi</span>
                                             <?php endif; ?>
                                         </div>
                                         
@@ -306,6 +339,98 @@ $riwayat_logbook = $stmt->fetchAll();
             </div>
         </div>
     </main>
+
+    <!-- =========================================================================
+         KONTEN TERSEMBUNYI KHUSUS UNTUK FORMAT PDF A4 (HITAM PUTIH & RAPI) 
+         ========================================================================= -->
+    <div id="pdf-container" style="display: none;">
+        <!-- Lebar disetel 190mm (Kertas A4 = 210mm dikurangi margin) agar tidak kepotong -->
+        <div id="pdf-content" style="padding: 10px; font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; width: 190mm; box-sizing: border-box;">
+            
+            <!-- KOP SURAT (Hitam Putih) -->
+            <div style="text-align: center; border-bottom: 3px solid #000; padding-bottom: 15px; margin-bottom: 20px;">
+                <h1 style="margin: 0; font-size: 22px; color: #000; text-transform: uppercase;">REKAPITULASI LOGBOOK MAGANG</h1>
+                <p style="margin: 5px 0 0; font-size: 16px; font-weight: bold; color: #000;">BADAN PUSAT STATISTIK KOTA YOGYAKARTA</p>
+            </div>
+
+            <!-- INFO PESERTA -->
+            <table style="width: 100%; margin-bottom: 25px; font-size: 14px; color: #000; border: none;">
+                <tr><td style="width: 160px; font-weight: bold; padding: 5px 0;">Nama Peserta</td><td>: <?= htmlspecialchars($nama_user) ?></td></tr>
+                <tr><td style="font-weight: bold; padding: 5px 0;">Asal Institusi</td><td>: <?= $institusi ?></td></tr>
+                <tr><td style="font-weight: bold; padding: 5px 0;">Pembimbing BPS</td><td>: <?= $pembimbing ?></td></tr>
+                <tr><td style="font-weight: bold; padding: 5px 0;">Tanggal Cetak</td><td>: <?= date('d F Y') ?></td></tr>
+            </table>
+
+            <!-- REKAPITULASI STATISTIK (Kotak Hitam Putih) -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px; color: #000;">
+                <tr>
+                    <td style="border: 1px solid #000; padding: 12px; text-align: center; width: 25%;">
+                        <div style="font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Total Kegiatan</div>
+                        <div style="font-size: 18px; font-weight: bold;"><?= $total_logbook ?></div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 12px; text-align: center; width: 25%;">
+                        <div style="font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Disetujui</div>
+                        <div style="font-size: 18px; font-weight: bold;"><?= $disetujui ?></div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 12px; text-align: center; width: 25%;">
+                        <div style="font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Menunggu Review</div>
+                        <div style="font-size: 18px; font-weight: bold;"><?= $menunggu ?></div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 12px; text-align: center; width: 25%;">
+                        <div style="font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Perlu Revisi</div>
+                        <div style="font-size: 18px; font-weight: bold;"><?= $revisi ?></div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- TABEL DETAIL RIWAYAT LOGBOOK -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 14px; color: #000;">
+                <thead>
+                    <tr>
+                        <th style="border: 1px solid #000; padding: 10px; width: 5%; text-align: center; font-weight: bold;">No</th>
+                        <th style="border: 1px solid #000; padding: 10px; width: 15%; text-align: center; font-weight: bold;">Tanggal</th>
+                        <th style="border: 1px solid #000; padding: 10px; width: 25%; text-align: center; font-weight: bold;">Judul Kegiatan</th>
+                        <th style="border: 1px solid #000; padding: 10px; width: 40%; text-align: left; font-weight: bold;">Deskripsi Kegiatan</th>
+                        <th style="border: 1px solid #000; padding: 10px; width: 15%; text-align: center; font-weight: bold;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (count($riwayat_logbook) > 0): ?>
+                        <?php 
+                        // Urutkan riwayat dari terlama ke terbaru untuk cetak rekap (ASCENDING)
+                        $riwayat_cetak = array_reverse($riwayat_logbook);
+                        $no = 1; 
+                        foreach ($riwayat_cetak as $row): 
+                        ?>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top;"><?= $no++ ?></td>
+                                <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top;"><?= date('d-m-Y', strtotime($row['tanggal'])) ?></td>
+                                <td style="border: 1px solid #000; padding: 8px; text-align: left; vertical-align: top; font-weight: bold;"><?= htmlspecialchars($row['judul_kegiatan']) ?></td>
+                                <td style="border: 1px solid #000; padding: 8px; text-align: left; vertical-align: top;"><?= nl2br(htmlspecialchars($row['deskripsi'])) ?></td>
+                                <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top;"><?= ucfirst($row['status']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="5" style="border: 1px solid #000; padding: 15px; text-align: center;">Belum ada logbook kegiatan yang dicatat.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <!-- TANDA TANGAN (Pembimbing) -->
+            <div style="width: 100%; text-align: right; color: #000; font-size: 14px; page-break-inside: avoid;">
+                <div style="display: inline-block; text-align: center; width: 250px;">
+                    <p style="margin: 0;">Yogyakarta, <?= date('d F Y') ?></p>
+                    <p style="margin: 0;">Pembimbing Magang,</p>
+                    <br><br><br><br>
+                    <div style="font-weight: bold; text-decoration: underline; margin-top: 10px;"><?= $pembimbing ?></div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    <!-- ========================================================================= -->
 
     <script>
         lucide.createIcons();
@@ -368,6 +493,38 @@ $riwayat_logbook = $stmt->fetchAll();
                 document.getElementById('f_solusi').value = ''; 
             }
         });
+
+        // FUNGSI UNTUK GENERATE DAN DOWNLOAD PDF LOGBOOK (A4 Hitam Putih)
+        function generatePDF() {
+            const btn = document.getElementById('btn-pdf');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Memproses PDF...';
+            lucide.createIcons();
+            
+            const element = document.getElementById('pdf-content');
+            element.parentElement.style.display = 'block';
+            
+            const opt = {
+                margin:       10, 
+                filename:     'Rekap_Logbook_<?= str_replace(" ", "_", htmlspecialchars($nama_user)) ?>.pdf',
+                image:        { type: 'jpeg', quality: 1 },
+                html2canvas:  { scale: 2, useCORS: true }, 
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.parentElement.style.display = 'none';
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+            }).catch(err => {
+                console.error('Error saat membuat PDF:', err);
+                element.parentElement.style.display = 'none';
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+                alert('Terjadi kesalahan saat memuat PDF.');
+            });
+        }
     </script>
 </body>
 </html>

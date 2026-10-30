@@ -172,29 +172,45 @@ while ($row = $stmt_docs->fetch()) {
                 <h2 class="text-lg font-bold text-gray-800">Dokumen Lampiran</h2>
             </div>
             <div class="p-6 flex flex-col md:flex-row gap-4">
+                <!-- CV -->
                 <div class="flex-1 border rounded-lg p-4 flex items-center justify-between hover:bg-gray-50 transition">
                     <div class="flex items-center gap-3">
-                        <div class="p-2 bg-red-100 text-red-600 rounded-lg"><i data-lucide="file-text" class="w-6 h-6"></i></div>
+                        <div class="p-2 bg-red-100 text-red-600 rounded-lg shrink-0"><i data-lucide="file-text" class="w-6 h-6"></i></div>
                         <div>
                             <p class="font-bold text-gray-800">Curriculum Vitae (CV)</p>
-                            <p class="text-xs text-gray-500 truncate w-40"><?= htmlspecialchars($dokumen['CV']['nama_file'] ?? 'Tidak ada') ?></p>
+                            <p class="text-xs text-gray-500 truncate w-32 sm:w-40"><?= htmlspecialchars($dokumen['CV']['nama_file'] ?? 'Tidak ada') ?></p>
                         </div>
                     </div>
                     <?php if (isset($dokumen['CV'])): ?>
-                        <a href="<?= htmlspecialchars($dokumen['CV']['file_path']) ?>" target="_blank" class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 font-medium">Download</a>
+                        <div class="flex flex-col gap-2 ml-2 shrink-0">
+                            <button type="button" onclick="bukaPreview('<?= htmlspecialchars($dokumen['CV']['file_path']) ?>', 'Curriculum Vitae (CV)')" class="w-full text-center px-4 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium flex items-center justify-center gap-1">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i> Lihat
+                            </button>
+                            <a href="<?= htmlspecialchars($dokumen['CV']['file_path']) ?>" download class="w-full text-center px-4 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium flex items-center justify-center gap-1">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> Download
+                            </a>
+                        </div>
                     <?php endif; ?>
                 </div>
 
+                <!-- SURAT PENGANTAR -->
                 <div class="flex-1 border rounded-lg p-4 flex items-center justify-between hover:bg-gray-50 transition">
                     <div class="flex items-center gap-3">
-                        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i data-lucide="file-badge-2" class="w-6 h-6"></i></div>
+                        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0"><i data-lucide="file-badge-2" class="w-6 h-6"></i></div>
                         <div>
                             <p class="font-bold text-gray-800">Surat Pengantar</p>
-                            <p class="text-xs text-gray-500 truncate w-40"><?= htmlspecialchars($dokumen['SURAT_PENGANTAR']['nama_file'] ?? 'Tidak ada') ?></p>
+                            <p class="text-xs text-gray-500 truncate w-32 sm:w-40"><?= htmlspecialchars($dokumen['SURAT_PENGANTAR']['nama_file'] ?? 'Tidak ada') ?></p>
                         </div>
                     </div>
                     <?php if (isset($dokumen['SURAT_PENGANTAR'])): ?>
-                        <a href="<?= htmlspecialchars($dokumen['SURAT_PENGANTAR']['file_path']) ?>" target="_blank" class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 font-medium">Download</a>
+                        <div class="flex flex-col gap-2 ml-2 shrink-0">
+                            <button type="button" onclick="bukaPreview('<?= htmlspecialchars($dokumen['SURAT_PENGANTAR']['file_path']) ?>', 'Surat Pengantar')" class="w-full text-center px-4 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium flex items-center justify-center gap-1">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i> Lihat
+                            </button>
+                            <a href="<?= htmlspecialchars($dokumen['SURAT_PENGANTAR']['file_path']) ?>" download class="w-full text-center px-4 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium flex items-center justify-center gap-1">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> Download
+                            </a>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -230,6 +246,24 @@ while ($row = $stmt_docs->fetch()) {
             </div>
         </div>
         <?php endif; ?>
+    </div>
+
+    <!-- MODAL PREVIEW DOKUMEN -->
+    <div id="modalPreview" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex justify-center items-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 id="previewTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i> Pratinjau Dokumen
+                </h3>
+                <button onclick="tutupPreview()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-200 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="flex-1 bg-gray-100 p-2 relative">
+                <iframe id="previewFrame" src="" class="w-full h-full rounded border border-gray-300 bg-white"></iframe>
+            </div>
+            <div class="p-3 border-t border-gray-200 bg-gray-50 flex justify-end">
+                <button type="button" onclick="tutupPreview()" class="px-5 py-2 text-sm text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition">Tutup</button>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL TOLAK -->
@@ -292,6 +326,20 @@ while ($row = $stmt_docs->fetch()) {
 
     <script>
         lucide.createIcons();
+
+        // Fungsi Preview Dokumen Modal
+        function bukaPreview(url, title) {
+            document.getElementById('previewTitle').innerHTML = `<i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i> Pratinjau: ${title}`;
+            document.getElementById('previewFrame').src = url;
+            document.getElementById('modalPreview').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function tutupPreview() {
+            document.getElementById('modalPreview').classList.add('hidden');
+            document.getElementById('previewFrame').src = ''; // Kosongkan frame agar stop load
+        }
+
         function bukaModalTolak() { document.getElementById('modalTolak').classList.remove('hidden'); }
         function tutupModalTolak() { document.getElementById('modalTolak').classList.add('hidden'); }
         function bukaModalTerima() { document.getElementById('modalTerima').classList.remove('hidden'); }

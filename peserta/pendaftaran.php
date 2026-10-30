@@ -141,9 +141,13 @@ if ($peserta) {
 <body class="bg-gray-50 flex h-screen overflow-hidden">
 
     <!-- SIDEBAR -->
-    <aside class="w-64 bg-slate-800 text-white flex flex-col hidden md:flex">
-        <div class="p-6 text-xl font-bold border-b border-slate-700 flex items-center gap-2">
-            <i data-lucide="bar-chart-2" class="text-blue-400"></i> SIMMAG BPS
+      <aside id="sidebar-menu" class="w-64 bg-slate-800 text-white flex flex-col fixed inset-y-0 left-0 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex">
+        <div class="h-[73px] px-4 flex items-center justify-between border-b border-slate-700/50 md:border-none">
+            <img src="../src/assets/img/logo.png" alt="Logo" class="h-14 max-w-[200px] w-auto object-contain brightness-0 invert">
+            <!-- Tombol Silang Menutup Menu di Layar Kecil -->
+            <button type="button" onclick="toggleSidebar()" class="p-2 text-slate-400 hover:text-white md:hidden rounded-lg">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
         </div>
         <nav class="flex-1 p-4 space-y-2">
             <a href="dashboard.php" class="flex items-center gap-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition">

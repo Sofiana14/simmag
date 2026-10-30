@@ -36,43 +36,40 @@ $warna_progress = ($terisi >= $kuota_maksimal) ? 'bg-red-500' : 'bg-green-500';
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style> body { font-family: 'Inter', sans-serif; } </style>
+    <style> 
+        body { font-family: 'Inter', sans-serif; } 
+        /* Sembunyikan scrollbar di mobile untuk navigasi agar lebih rapi */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
 
-    <!-- NAVBAR -->
+    <!-- NAVBAR (Dipaksa selalu sejajar di semua ukuran layar) -->
     <nav class="bg-white/80 backdrop-blur-md border-b border-gray-100 fixed w-full z-50 top-0 transition-all">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-600/20">
-                        <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-bold text-xl leading-tight text-slate-900">SIMMAG BPS</h1>
-                        <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Kota Yogyakarta</p>
-                    </div>
-                </div>
+            <!-- flex justify-between items-center h-20 memastikan selalu satu baris -->
+            <div class="flex justify-between items-center h-20 gap-4">
                 
-                <div class="hidden md:flex items-center space-x-8">
-                    <a href="#beranda" class="text-sm font-medium text-blue-600">Beranda</a>
-                    <a href="#persyaratan" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition">Persyaratan</a>
-                    <a href="#alur" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition">Alur Pendaftaran</a>
-                    <a href="#kuota" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition">Info Kuota</a>
+                <!-- Kiri: Logo (Menggunakan gambar dari src/assets/img/logo.png) -->
+                <a href="#beranda" class="shrink-0 flex items-center">
+                    <img src="src/assets/img/logo.png" alt="Logo SIMMAG BPS" class="h-12 md:h-12 w-auto object-contain">
+                </a>
+                
+                <!-- Kanan: Menu Navigasi (Selalu di kanan, auto-scroll di layar HP) -->
+                <div class="flex flex-1 items-center justify-end space-x-6 overflow-x-auto hide-scrollbar">
+                    <a href="#beranda" class="text-sm font-medium text-blue-600 whitespace-nowrap">Beranda</a>
+                    <a href="#persyaratan" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition whitespace-nowrap">Persyaratan</a>
+                    <a href="#alur" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition whitespace-nowrap">Alur Pendaftaran</a>
+                    <a href="#kuota" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition whitespace-nowrap">Info Kuota</a>
                 </div>
 
-                <div class="flex items-center gap-4">
-                    <a href="login.php" class="hidden md:block text-sm font-semibold text-slate-600 hover:text-blue-600 transition">Login</a>
-                    <a href="login.php" class="bg-blue-600 text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-600/30">
-                        Daftar Magang
-                    </a>
-                </div>
             </div>
         </div>
     </nav>
 
     <!-- HERO SECTION -->
-    <section id="beranda" class="pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden relative">
+    <section id="beranda" class="pt-36 pb-20 lg:pt-48 lg:pb-32 overflow-hidden relative">
         <!-- Background Decoration -->
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10">
             <div class="absolute top-20 left-20 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
@@ -80,13 +77,6 @@ $warna_progress = ($terisi >= $kuota_maksimal) ? 'bg-red-500' : 'bg-green-500';
         </div>
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold uppercase tracking-wider mb-8">
-                <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-                Pendaftaran Periode <?= date('Y') ?> Dibuka
-            </div>
             
             <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight mb-6 max-w-4xl mx-auto leading-tight">
                 Sistem Informasi Pendaftaran Magang <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500">BPS Kota Yogyakarta</span>
@@ -96,13 +86,14 @@ $warna_progress = ($terisi >= $kuota_maksimal) ? 'bg-red-500' : 'bg-green-500';
                 Daftarkan kegiatan magang Anda secara mudah, cepat, dan terintegrasi melalui sistem informasi magang resmi Badan Pusat Statistik Kota Yogyakarta.
             </p>
             
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="login.php" class="bg-blue-600 text-white px-8 py-3.5 rounded-full text-base font-semibold hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2">
-                    Daftar Sekarang <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            <!-- SATU TOMBOL LOGIN & LINK REGISTRASI -->
+            <div class="flex flex-col items-center justify-center gap-3">
+                <a href="login.php" class="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-3.5 rounded-full text-base font-semibold hover:bg-blue-500 active:bg-blue-400 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all duration-200 ease-out shadow-xl shadow-blue-600/20">
+                    Login Sekarang <i data-lucide="arrow-right" class="w-5 h-5"></i>
                 </a>
-                <a href="login.php" class="bg-white text-slate-700 border border-slate-200 px-8 py-3.5 rounded-full text-base font-semibold hover:bg-slate-50 transition flex items-center justify-center gap-2">
-                    <i data-lucide="log-in" class="w-5 h-5"></i> Login Peserta
-                </a>
+                <p class="text-sm text-slate-500 mt-2">
+                    Belum punya akun? <a href="register.php" class="text-blue-600 font-semibold hover:text-blue-700 hover:underline transition-all">Registrasi di sini</a>
+                </p>
             </div>
         </div>
     </section>
@@ -236,6 +227,7 @@ $warna_progress = ($terisi >= $kuota_maksimal) ? 'bg-red-500' : 'bg-green-500';
     <footer class="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div class="flex justify-center items-center gap-2 mb-6">
+                <!-- Anda bisa mengganti logo di footer ini juga jika mau, dengan tag img yang sama -->
                 <i data-lucide="bar-chart-2" class="w-8 h-8 text-blue-500"></i>
                 <span class="text-xl font-bold text-white tracking-wide">SIMMAG BPS</span>
             </div>

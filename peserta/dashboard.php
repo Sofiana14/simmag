@@ -108,9 +108,6 @@ if ($peserta_id) {
             <a href="presensi.php" class="flex items-center gap-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition">
                 <i data-lucide="calendar-check" class="w-5 h-5"></i> Presensi
             </a>
-            <a href="cetak_bukti.php" target="_blank" class="flex items-center gap-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition">
-                <i data-lucide="printer" class="w-5 h-5"></i> Cetak Bukti PDF
-            </a>
             <a href="../logout.php" class="flex items-center gap-3 p-3 mt-8 rounded-lg text-red-400 hover:bg-red-500 hover:text-white transition">
                 <i data-lucide="log-out" class="w-5 h-5"></i> Logout
             </a>
